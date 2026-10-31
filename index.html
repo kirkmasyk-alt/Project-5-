@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena of Champions: Automated Gladiator Sim</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .font-cinzel { font-family: 'Cinzel', serif; }
+        .log-scroll::-webkit-scrollbar { width: 6px; }
+        .log-scroll::-webkit-scrollbar-track { background: #1f2937; }
+        .log-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-amber-600/30 py-4 px-6 shadow-lg">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="font-cinzel text-3xl font-extrabold tracking-wider text-amber-500 drop-shadow">ARENA OF CHAMPIONS</h1>
+                <p class="text-xs text-gray-400 tracking-widest uppercase">Autonomous Gladiator Autobattler</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="toggleSimBtn" onclick="toggleSimulation()" class="bg-amber-600 hover:bg-amber-500 text-gray-950 font-bold px-6 py-2.5 rounded shadow transition flex items-center gap-2">
+                    <svg id="btnIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <span id="btnText">Start Simulation</span>
+                </button>
+                <button onclick="resetTournament()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold px-4 py-2.5 rounded border border-gray-700 transition">
+                    Reset / Draft
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- Left Column: Fighters Overview -->
+        <section class="lg:col-span-1 flex flex-col gap-6">
+            <div class="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-5 shadow-xl">
+                <h2 class="font-cinzel text-lg font-bold text-amber-400 mb-4 border-b border-gray-800 pb-2">The Gladiators</h2>
+                <div id="fightersContainer" class="flex flex-col gap-4">
+                    <!-- Dynamic Fighter Cards Injected Here -->
+                </div>
+            </div>
+
+            <!-- Tournament Standings / Stats -->
+            <div class="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-5 shadow-xl">
+                <h2 class="font-cinzel text-lg font-bold text-amber-400 mb-3 border-b border-gray-800 pb-2">Arena Records</h2>
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80">
+                        <span class="block text-2xl font-bold text-amber-500" id="statMatches">0</span>
+                        <span class="text-xs text-gray-400 uppercase tracking-wider">Total Bouts</span>
+                    </div>
+                    <div class="bg-gray-950/60 p-3 rounded-lg border border-gray-800/80">
+                        <span class="block text-2xl font-bold text-emerald-400" id="statSpeed">1.0x</span>
+                        <span class="text-xs text-gray-400 uppercase tracking-wider">Sim Tick Rate</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center/Right Columns: Arena Combat & Live Log -->
+        <section class="lg:col-span-2 flex flex-col gap-6">
+            
+            <!-- Visual Arena Card -->
+            <div class="bg-gray-900/90 backdrop-blur border border-amber-600/30 rounded-xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[320px]">
+                <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-950/10 via-gray-900/0 to-gray-950/80 pointer-events-none"></div>
+                
+                <!-- Match Status Header -->
+                <div class="flex justify-between items-center z-10 border-b border-gray-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-block w-3 h-3 rounded-full bg-red-500 animate-pulse" id="matchStatusIndicator"></span>
+                        <span class="text-xs uppercase tracking-widest text-gray-400 font-semibold" id="matchStateLabel">Waiting for Bouts</span>
+                    </div>
+                    <div class="text-xs font-mono text-amber-400/80" id="matchTimer">Round: 0</div>
+                </div>
+
+                <!-- Fighters Face-off Visual -->
+                <div class="grid grid-cols-5 items-center my-6 z-10 gap-2">
+                    <!-- Fighter 1 -->
+                    <div id="arenaFighter1" class="col-span-2 flex flex-col items-center text-center p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+                        <div class="text-3xl mb-1" id="f1Icon">⚔️</div>
+                        <h3 class="font-bold text-sm text-gray-200 truncate w-full" id="f1Name">Fighter A</h3>
+                        <span class="text-xs text-amber-400/90 italic mb-2 truncate w-full" id="f1Title">Title</span>
+                        <div class="w-full bg-gray-800 rounded-full h-2.5 mb-1 overflow-hidden">
+                            <div id="f1HpBar" class="bg-red-600 h-2.5 transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                        <span class="text-xs font-mono text-gray-300" id="f1HpText">100 / 100 HP</span>
+                    </div>
+
+                    <!-- VS Badge -->
+                    <div class="col-span-1 flex flex-col items-center justify-center">
+                        <span class="font-cinzel text-xl font-extrabold text-amber-500/80 tracking-tighter">VS</span>
+                        <span class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Colosseum</span>
+                    </div>
+
+                    <!-- Fighter 2 -->
+                    <div id="arenaFighter2" class="col-span-2 flex flex-col items-center text-center p-4 rounded-xl bg-gray-950/60 border border-gray-800">
+                        <div class="text-3xl mb-1" id="f2Icon">🛡️</div>
+                        <h3 class="font-bold text-sm text-gray-200 truncate w-full" id="f2Name">Fighter B</h3>
+                        <span class="text-xs text-amber-400/90 italic mb-2 truncate w-full" id="f2Title">Title</span>
+                        <div class="w-full bg-gray-800 rounded-full h-2.5 mb-1 overflow-hidden">
+                            <div id="f2HpBar" class="bg-red-600 h-2.5 transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                        <span class="text-xs font-mono text-gray-300" id="f2HpText">100 / 100 HP</span>
+                    </div>
+                </div>
+
+                <!-- Current Action Banner -->
+                <div class="z-10 bg-gray-950/80 border border-gray-800 rounded-lg p-3 text-center">
+                    <p class="text-xs text-amber-300 font-mono tracking-wide" id="currentActionText">Press 'Start Simulation' to unleash the champions into the arena.</p>
+                </div>
+            </div>
+
+            <!-- Live Combat Log -->
+            <div class="bg-gray-900/80 backdrop-blur border border-gray-800 rounded-xl p-5 shadow-xl flex flex-col h-[280px]">
+                <div class="flex justify-between items-center mb-3 border-b border-gray-800 pb-2">
+                    <h2 class="font-cinzel text-sm font-bold text-amber-400 uppercase tracking-wider">Live Combat Feed</h2>
+                    <button onclick="clearLog()" class="text-xs text-gray-500 hover:text-gray-300 transition">Clear Feed</button>
+                </div>
+                <div id="combatLog" class="log-scroll flex-grow overflow-y-auto flex flex-col gap-1.5 font-mono text-xs pr-2">
+                    <div class="text-gray-500 italic">[System] Arena initialized. Champions are fully equipped and awaiting orders...</div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 text-center py-4 text-xs text-gray-500">
+        Arena of Champions &bull; Fully autonomous web-based gladiator simulation &bull; Hosted via GitHub Pages
+    </footer>
+
+    <!-- Game Engine Script -->
+    <script>
+        // Item Database (Weapons, Armor, Skills)
+        const WEAPONS = [
+            { name: "Broadsword", dmg: 14, speed: 1.0, crit: 0.1, type: "Slash", icon: "🗡️" },
+            { name: "War Axe", dmg: 19, speed: 0.8, crit: 0.15, type: "Chop", icon: "🪓" },
+            { name: "Spear", dmg: 12, speed: 1.2, crit: 0.08, type: "Pierce", icon: "🔱" },
+            { name: "Warhammer", dmg: 24, speed: 0.65, crit: 0.2, type: "Crush", icon: "🔨" },
+            { name: "Dual Daggers", dmg: 9, speed: 1.6, crit: 0.25, type: "Slash", icon: "🗡️" }
+        ];
+
+        const ARMOR = [
+            { name: "Iron Cuirass", armor: 8, hp: 30, icon: "🛡️" },
+            { name: "Chainmail Hauberk", armor: 5, hp: 20, icon: "🧥" },
+            { name: "Plate Harness", armor: 13, hp: 45, icon: "🛡️" },
+            { name: "Studded Leather", armor: 3, hp: 15, icon: "🦺" }
+        ];
+
+        const SKILLS = [
+            { name: "Power Strike", desc: "A heavy, devastating blow dealing 150% damage.", cooldown: 4, effect: (f, e) => {
+                let dmg = Math.round(f.calcDmg() * 1.5);
+                e.takeDmg(dmg);
+                return `${f.name} uses **Power Strike** with their ${f.weapon.name} for <span class="text-amber-400 font-bold">${dmg}</span> damage!`;
+            }},
+            { name: "Shield Slam", desc: "Bashes the foe with armor, stunning momentum and dealing flat damage.", cooldown: 5, effect: (f, e) => {
+                let dmg = 10 + f.armorValue;
+                e.takeDmg(dmg);
+                return `${f.name} performs a brutal **Shield Slam** for <span class="text-amber-400 font-bold">${dmg}</span> impact damage!`;
+            }},
+            { name: "Quick Flurry", desc: "A rapid double-strike sequence.", cooldown: 3, effect: (f, e) => {
+                let hit1 = Math.round(f.calcDmg() * 0.7);
+                let hit2 = Math.round(f.calcDmg() * 0.7);
+                e.takeDmg(hit1 + hit2);
+                return `${f.name} unleashes a **Quick Flurry** for dual strikes totaling <span class="text-amber-400 font-bold">${hit1 + hit2}</span> damage!`;
+            }},
+            { name: "Second Wind", desc: "Focuses inner resolve to restore lost health.", cooldown: 7, effect: (f, e) => {
+                let heal = 25;
+                f.hp = Math.min(f.maxHp, f.hp + heal);
+                return `${f.name} catches their breath and triggers **Second Wind**, recovering <span class="text-emerald-400 font-bold">${heal} HP</span>!`;
+            }}
+        ];
+
+        // Gladiator Class Definition
+        class Gladiator {
+            constructor(id, name, title, avatar) {
+                this.id = id;
+                this.name = name;
+                this.title = title;
+                this.avatar = avatar;
+                this.wins = 0;
+                this.losses = 0;
+                this.randomizeGear();
+            }
+
+            randomizeGear() {
+                this.weapon = WEAPONS[Math.floor(Math.random() * WEAPONS.length)];
+                this.armorPiece = ARMOR[Math.floor(Math.random() * ARMOR.length)];
+                this.skill = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+                
+                this.armorValue = this.armorPiece.armor;
+                this.maxHp = 100 + this.armorPiece.hp;
+                this.hp = this.maxHp;
+                this.skillCd = 0;
+            }
+
+            calcDmg() {
+                let base = this.weapon.dmg + Math.floor(Math.random() * 6);
+                if (Math.random() < this.weapon.crit) {
+                    return Math.round(base * 1.75); // Critical hit
+                }
+                return base;
+            }
+
+            takeDmg(rawDmg) {
+                let mitigated = Math.max(3, rawDmg - Math.floor(this.armorValue * 0.6));
+                this.hp = Math.max(0, this.hp - mitigated);
+                return mitigated;
+            }
+        }
+
+        // Initialize Game State
+        let gladiators = [
+            new Gladiator(1, "Vane the Undefeated", "The Bloodsworn", "🦁"),
+            new Gladiator(2, "Valeria Ironheart", "Shield of the North", "🛡️"),
+            new Gladiator(3, "Korrigan Blade", "Shadow of the Sands", "🗡️"),
+            new Gladiator(4, "Thorgar Skullsplicer", "The Mountain Crusher", "🪓")
+        ];
+
+        let simActive = false;
+        let matchCount = 0;
+        let currentFighter1 = null;
+        let currentFighter2 = null;
+        let simInterval = null;
+
+        // UI Binding Functions
+        function initUI() {
+            renderFightersList();
+            setupNextMatch();
+        }
+
+        function renderFightersList() {
+            const container = document.getElementById("fightersContainer");
+            container.innerHTML = "";
+            gladiators.forEach(f => {
+                let card = document.createElement("div");
+                card.className = "bg-gray-950/60 border border-gray-800 rounded-lg p-3.5 flex flex-col gap-2";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2.5">
+                            <span class="text-2xl">${f.avatar}</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-gray-200">${f.name}</h4>
+                                <span class="text-[11px] text-amber-400/90 italic">${f.title}</span>
+                            </div>
+                        </div>
+                        <div class="text-right font-mono text-xs text-gray-400">
+                            <span class="text-emerald-400">${f.wins}W</span> - <span class="text-red-400">${f.losses}L</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 text-[11px] text-gray-400 bg-gray-900/50 p-2 rounded border border-gray-800/80">
+                        <div><span class="text-gray-500">Wpn:</span> ${f.weapon.icon} ${f.weapon.name}</div>
+                        <div><span class="text-gray-500">Arm:</span> ${f.armorPiece.icon} ${f.armorPiece.armor}</div>
+                        <div><span class="text-gray-500">Skill:</span> ${f.skill.name}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function setupNextMatch() {
+            // Pick two distinct random gladiators
+            let idx1 = Math.floor(Math.random() * gladiators.length);
+            let idx2;
+            do {
+                idx2 = Math.floor(Math.random() * gladiators.length);
+            } while (idx2 === idx1);
+
+            currentFighter1 = gladiators[idx1];
+            currentFighter2 = gladiators[idx2];
+
+            // Reset their HP for the new match
+            currentFighter1.hp = currentFighter1.maxHp;
+            currentFighter1.skillCd = 0;
+            currentFighter2.hp = currentFighter2.maxHp;
+            currentFighter2.skillCd = 0;
+
+            updateArenaUI();
+            logMessage(`[Match] New bout announced between **${currentFighter1.name}** and **${currentFighter2.name}**!`);
+        }
+
+        function updateArenaUI() {
+            if (!currentFighter1 || !currentFighter2) return;
+
+            // Fighter 1
+            document.getElementById("f1Icon").innerText = currentFighter1.avatar;
+            document.getElementById("f1Name").innerText = currentFighter1.name;
+            document.getElementById("f1Title").innerText = currentFighter1.title;
+            let f1Pct = Math.max(0, (currentFighter1.hp / currentFighter1.maxHp) * 100);
+            document.getElementById("f1HpBar.style.width") = f1Pct + "%";
+            document.getElementById("f1HpBar").style.width = f1Pct + "%";
+            document.getElementById("f1HpText").innerText = `${currentFighter1.hp} / ${currentFighter1.maxHp} HP`;
+
+            // Fighter 2
+            document.getElementById("f2Icon").innerText = currentFighter2.avatar;
+            document.getElementById("f2Name").innerText = currentFighter2.name;
+            document.getElementById("f2Title").innerText = currentFighter2.title;
+            let f2Pct = Math.max(0, (currentFighter2.hp / currentFighter2.maxHp) * 100);
+            document.getElementById("f2HpBar").style.width = f2Pct + "%";
+            document.getElementById("f2HpText").innerText = `${currentFighter2.hp} / ${currentFighter2.maxHp} HP`;
+
+            document.getElementById("matchTimer").innerText = `Bout #${matchCount + 1}`;
+        }
+
+        function toggleSimulation() {
+            simActive = !simActive;
+            const btnText = document.getElementById("btnText");
+            const btnIcon = document.getElementById("btnIcon");
+            const indicator = document.getElementById("matchStatusIndicator");
+            const label = document.getElementById("matchStateLabel");
+
+            if (simActive) {
+                btnText.innerText = "Pause Simulation";
+                btnIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+                indicator.className = "inline-block w-3 h-3 rounded-full bg-emerald-500 animate-pulse";
+                label.innerText = "Simulation In Progress";
+                simInterval = setInterval(runCombatTick, 1000);
+            } else {
+                btnText.innerText = "Start Simulation";
+                btnIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                indicator.className = "inline-block w-3 h-3 rounded-full bg-amber-500";
+                label.innerText = "Simulation Paused";
+                clearInterval(simInterval);
+            }
+        }
+
+        function runCombatTick() {
+            if (!currentFighter1 || !currentFighter2) return;
+
+            // Check if either is already defeated
+            if (currentFighter1.hp <= 0 || currentFighter2.hp <= 0) {
+                resolveMatch();
+                return;
+            }
+
+            // Combat turn resolution (Fighter 1 attacks Fighter 2, then vice versa if alive)
+            executeAttack(currentFighter1, currentFighter2);
+            updateArenaUI();
+
+            if (currentFighter2.hp <= 0) {
+                resolveMatch();
+                return;
+            }
+
+            // Slight delay feel or immediate counter-strike
+            setTimeout(() => {
+                if (simActive && currentFighter1.hp > 0 && currentFighter2.hp > 0) {
+                    executeAttack(currentFighter2, currentFighter1);
+                    updateArenaUI();
+                    if (currentFighter1.hp <= 0) {
+                        resolveMatch();
+                    }
+                }
+            }, 400);
+        }
+
+        function executeAttack(attacker, defender) {
+            // Decrement cooldowns
+            if (attacker.skillCd > 0) attacker.skillCd--;
+
+            let actionText = "";
+            if (attacker.skillCd === 0 && Math.random() < 0.45) {
+                // Use Special Skill
+                actionText = attacker.skill.effect(attacker, defender);
+                attacker.skillCd = attacker.skill.cooldown;
+            } else {
+                // Standard Weapon Attack
+                let dmg = attacker.calcDmg();
+                defender.takeDmg(dmg);
+                actionText = `${attacker.name} strikes with their ${attacker.weapon.name} for <span class="text-amber-400 font-bold">${dmg}</span> damage.`;
+            }
+
+            logMessage(actionText);
+        }
+
+        function resolveMatch() {
+            let winner, loser;
+            if (currentFighter1.hp > 0) {
+                winner = currentFighter1;
+                loser = currentFighter2;
+            } else {
+                winner = currentFighter2;
+                loser = currentFighter1;
+            }
+
+            winner.wins++;
+            loser.losses++;
+            matchCount++;
+
+            document.getElementById("statMatches").innerText = matchCount;
+
+            logMessage(`<span class="text-amber-400 font-bold">🏆 VICTORY:</span> **${winner.name}** triumphs over ${loser.name} in a brutal clash!`);
+            
+            // Re-equip fighters randomly for endless variety
+            loser.randomizeGear();
+            winner.randomizeGear();
+
+            renderFightersList();
+
+            // Brief pause before next match setup
+            setTimeout(() => {
+                if (simActive) {
+                    setupNextMatch();
+                }
+            }, 1500);
+        }
+
+        function logMessage(msg) {
+            const logContainer = document.getElementById("combatLog");
+            let entry = document.createElement("div");
+            entry.className = "border-l-2 border-amber-600/60 pl-2.5 py-0.5 text-gray-300";
+            entry.innerHTML = msg;
+            logContainer.prepend(entry);
+
+            // Limit log entries to keep memory light
+            if (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById("combatLog").innerHTML = `<div class="text-gray-500 italic">[System] Combat feed cleared.</div>`;
+        }
+
+        function resetTournament() {
+            simActive = false;
+            clearInterval(simInterval);
+            document.getElementById("btnText").innerText = "Start Simulation";
+            document.getElementById("btnIcon").innerHTML = '<path d="M8 5v14l11-7z"/>';
+            document.getElementById("matchStatusIndicator").className = "inline-block w-3 h-3 rounded-full bg-red-500";
+            document.getElementById("matchStateLabel").innerText = "Waiting for Bouts";
+            
+            matchCount = 0;
+            document.getElementById("statMatches").innerText = "0";
+
+            gladiators.forEach(f => {
+                f.wins = 0;
+                f.losses = 0;
+                f.randomizeGear();
+            });
+
+            initUI();
+            logMessage(`<span class="text-cyan-400">[System]</span> Tournament reset. New gear and champions drafted.`);
+        }
+
+        // Initialize on load
+        window.onload = initUI;
+    </script>
+</body>
+</html>
